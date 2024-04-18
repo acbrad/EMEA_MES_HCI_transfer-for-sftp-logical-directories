@@ -29,8 +29,8 @@ import json
 import time
 import random
 import string
-
-from botocore.vendored import requests
+import urllib3
+#from botocore.vendored import requests
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -42,7 +42,7 @@ ACTION_DELETE = "Delete"
 STATUS_SUCCESS = "SUCCESS"
 STATUS_FAILED = "FAILED"
 
-def _send_response(response_url, response_body, put=requests.put):
+def _send_response(response_url, response_body):
     try:
         json_response_body = json.dumps(response_body)
     except Exception as e:
@@ -53,13 +53,17 @@ def _send_response(response_url, response_body, put=requests.put):
     logger.debug("CFN response URL: {}".format(response_url))
     logger.debug(json_response_body)
     headers = {'content-type': '', 'content-length': str(len(json_response_body))}
+    http = urllib3.PoolManager()
     while True:
         try:
-            response = put(response_url, data=json_response_body, headers=headers)
+##            response = put(response_url, data=json_response_body, headers=headers)
+            response = http.request(method="PUT", url=response_url, body=json_response_body, headers=headers)
             logger.info("CloudFormation returned status code: {}".format(response.reason))
+            print ("CloudFormation returned status code: {}".format(response.reason))
             break
         except Exception as e:
-            logger.error("Unexpected failure sending response to CloudFormation {}".format(e), exc_info=True)
+            logger.error("Unexpected failure sending response to CloudFormation {}".format(e))
+            print ("Unexpected failure sending response to CloudFormation {}".format(e))
             time.sleep(5)
 
 def _rand_string(l):
@@ -114,7 +118,7 @@ def _process(event, context, action):
         'Reason': "",
         'Data': {},
     }
-
+    print ("Sending SUCCESS response back to cloudformation ResposeURL")
     _send_response(event['ResponseURL'], response_body)
 
 def handler(event, context):
@@ -125,4 +129,6 @@ def handler(event, context):
         msg = "Failed to process custom resource event: {}".format(str(e))
         logger.error(msg, exc_info=True)
         response_body = {'Status': STATUS_FAILED, 'Data': {}, 'Reason': msg}
+        ## send response back to cloud formation caller in case of Exception
         _send_response(event['ResponseURL'], response_body)
+

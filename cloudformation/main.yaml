@@ -46,6 +46,7 @@ Resources:
     DependsOn:
       - PublicBucket
       - SubscribedBucket
+      - SampleDataLambda
 
   SampleDataLambdaRole:
     Type: "AWS::IAM::Role"
@@ -82,7 +83,8 @@ Resources:
       Description: "A function to create sample data in the associated S3 buckets"
       Handler: lambda_function.handler
       Role: !GetAtt SampleDataLambdaRole.Arn
-      Runtime: "python3.7"
+      Runtime: "python3.12"
+      Timeout: 45
       Environment:
         Variables:
           public_research: !Ref PublicBucket
